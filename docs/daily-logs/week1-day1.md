@@ -1,6 +1,6 @@
 # Week 1 - Day 1: Kubernetes Pods
 
-## Date: [Fill in]
+## Date: [10-Feb-2026]
 
 ## 🎯 Goals
 - Understand what Pods are
