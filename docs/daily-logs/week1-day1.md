@@ -8,25 +8,32 @@
 - Create pod using YAML manifest
 
 ## 📝 What I Learned
-
+How to write a pod manifest file
+How to create it
 ### Key Concepts
-- 
+- Creation of pod
 
 ### Commands Used
 ```bash
-# List your commands here
+kubectl apply -f my-first-pod.yaml 
+kubectl get pods
+kubectl get pods -w
+kubectl get pods -o wide
+kubectl describe po
+kubectl exec -it hello-app -- /bin/sh
+kubectl delete pod hello-app
 ```
 
 ## 🏗️ What I Built
-- 
+- Simple nginx pod
 
 ## 🤔 Questions / Confusion
-- 
+- No confusions so far
 
 ## ✅ Achievements
-- [ ] Created first pod
-- [ ] Used kubectl describe
-- [ ] Wrote YAML manifest
+- [✅] Created first pod
+- [✅] Used kubectl describe
+- [✅] Wrote YAML manifest
 
 ## ⏭️ Tomorrow
 - Deployments and Services
