@@ -16,7 +16,7 @@ Build an AI-powered system that monitors applications using Prometheus, detects 
 ## 📚 Progress Tracker
 
 ### Week 1: Kubernetes Basics ✅
-- [✅] Day 1: Pods
+- [x] Day 1: Pods ✅
 - [ ] Day 2: Deployments & Services
 - [ ] Day 3-4: Metrics App
 - [ ] Day 5-6: Prometheus Setup

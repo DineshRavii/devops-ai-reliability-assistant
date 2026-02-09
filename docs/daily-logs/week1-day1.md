@@ -31,9 +31,9 @@ kubectl delete pod hello-app
 - No confusions so far
 
 ## ✅ Achievements
-- [✅] Created first pod
-- [✅] Used kubectl describe
-- [✅] Wrote YAML manifest
+- [x] Created first pod ✅
+- [x] Used kubectl describe ✅
+- [x]] Wrote YAML manifest ✅
 
 ## ⏭️ Tomorrow
 - Deployments and Services
