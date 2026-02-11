@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-app
+  labels:
+    app: metrics-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: metrics-app
+  template:
+    metadata:
+      labels:
+        app: metrics-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: app
+        image: dineshravii/metrics-app:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: ENV
+          value: "kubernetes"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-app-service
+  labels:
+    app: metrics-app
+spec:
+  selector:
+    app: metrics-app
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  type: NodePort
