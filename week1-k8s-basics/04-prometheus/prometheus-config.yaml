@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: default
+data:
+  prometheus.yml: |
+    # Global config
+    global:
+      scrape_interval: 15s      # Scrape targets every 15 seconds
+      evaluation_interval: 15s  # Evaluate rules every 15 seconds
+      external_labels:
+        cluster: 'kodekloud-learning'
+        monitor: 'devops-ai-monitor'
+
+    # Scrape configs - what to monitor
+    scrape_configs:
+      # Job 1: Prometheus monitors itself
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Job 2: Your metrics app! 🔥
+      - job_name: 'metrics-app'
+        static_configs:
+          - targets: ['metrics-app-service:80']
+        metrics_path: '/metrics'
+        scrape_interval: 15s
