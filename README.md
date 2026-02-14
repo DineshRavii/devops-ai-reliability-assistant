@@ -238,8 +238,8 @@ for i in {1..100}; do curl -s $METRICS_URL/ > /dev/null & done
 
 ## 📞 Connect
 
-**GitHub:** [Your GitHub URL]
-**LinkedIn:** [Your LinkedIn URL]
+**GitHub:** https://github.com/DineshRavii
+**LinkedIn:** https://www.linkedin.com/in/dinesh-ravii/
 **Docker Hub:** hub.docker.com/u/dineshravii
 
 ---
