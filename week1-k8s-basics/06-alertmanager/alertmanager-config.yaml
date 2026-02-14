@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['alertname', 'severity']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'default-receiver'
+      routes:
+      - match:
+          severity: critical
+        receiver: 'critical-receiver'
+      - match:
+          severity: warning
+        receiver: 'warning-receiver'
+
+    receivers:
+    - name: 'default-receiver'
+      # For now, just logging (no actual notification)
+    
+    - name: 'critical-receiver'
+      # In production: Slack, PagerDuty, email
+      # For learning: We'll just see them in AlertManager UI
+    
+    - name: 'warning-receiver'
+      # Same - just visible in UI
+
+    inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'instance']
