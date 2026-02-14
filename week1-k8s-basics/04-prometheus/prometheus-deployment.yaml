@@ -27,8 +27,10 @@ spec:
         - name: web
           containerPort: 9090
         volumeMounts:
-        - name: config
+        - name: prometheus-config
           mountPath: /etc/prometheus
+        - name: prometheus-rules
+          mountPath: /etc/prometheus-rules
         - name: storage
           mountPath: /prometheus
         resources:
@@ -39,9 +41,12 @@ spec:
             memory: "512Mi"
             cpu: "200m"
       volumes:
-      - name: config
+      - name: prometheus-config
         configMap:
           name: prometheus-config
+      - name: prometheus-rules
+        configMap:
+          name: prometheus-rules
       - name: storage
         emptyDir: {}
 ---
@@ -52,10 +57,10 @@ metadata:
   labels:
     app: prometheus
 spec:
-  selector:
-    app: prometheus
   type: NodePort
   ports:
   - name: web
     port: 9090
     targetPort: 9090
+  selector:
+    app: prometheus

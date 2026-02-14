@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: default
+data:
+  alert.rules.yml: |
+    groups:
+    - name: app_alerts
+      interval: 10s
+      rules:
+      # Test alert - always fires
+      - alert: AlwaysFiring
+        expr: vector(1)
+        for: 10s
+        labels:
+          severity: info
+        annotations:
+          summary: "Test alert that always fires"
+          description: "If you see this, alerting is working!"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: sum(rate(app_requests_total{status="500"}[1m])) > 0.3
+        for: 30s
+        labels:
+          severity: critical
+          component: metrics-app
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanize }} errors/second"
+
+      # App is down
+      - alert: MetricsAppDown
+        expr: up{job="metrics-app"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: metrics-app
+        annotations:
+          summary: "Metrics app is DOWN"
+          description: "The metrics-app has been down for 30 seconds"
+
+      # High latency
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(app_request_duration_seconds_bucket[1m])) > 2
+        for: 1m
+        labels:
+          severity: warning
+          component: metrics-app
+        annotations:
+          summary: "High latency detected"
+          description: "P95 latency is {{ $value | humanize }} seconds"
+
+      # Low request rate (might indicate problem)
+      - alert: LowRequestRate
+        expr: sum(rate(app_requests_total[5m])) < 0.1
+        for: 2m
+        labels:
+          severity: warning
+          component: metrics-app
+        annotations:
+          summary: "Very low request rate"
+          description: "Only {{ $value | humanize }} requests/second"
