@@ -61,4 +61,5 @@ spec:
   - port: 80
     targetPort: 8080
     name: http
+    nodePort: 30080
   type: NodePort
