@@ -2,8 +2,9 @@
 """
 AI-Powered Alert Analyzer V2
 - Slack notifications
-- Alert correlation
-- Anomaly detection (FIXED)
+- Alert correlation  
+- Anomaly detection
+- FIXED: Better deduplication (no duplicate Slack messages!)
 """
 
 from openai import OpenAI
@@ -77,7 +78,6 @@ class AlertAnalyzer:
             
             return None
         except Exception as e:
-            print(f"❌ Metric query failed: {e}")
             return None
     
     def detect_anomalies(self) -> List[Dict]:
@@ -128,30 +128,25 @@ class AlertAnalyzer:
                             'severity': 'critical' if z_score > 5 else 'warning'
                         })
                 except Exception as e:
-                    print(f"⚠️  Z-score calculation error: {e}")
+                    pass
             
             # Update baseline (moving average)
             baseline['values'].append(current_value)
-            if len(baseline['values']) > 100:  # Keep last 100 samples
+            if len(baseline['values']) > 100:
                 baseline['values'].pop(0)
             
-            # Calculate statistics manually (FIXED - no more statistics.stdev)
+            # Calculate statistics manually (FIXED)
             try:
                 values = baseline['values']
                 n = len(values)
-                
-                # Calculate mean
                 baseline['mean'] = sum(values) / n
                 
-                # Calculate standard deviation manually
                 if n > 1:
                     variance = sum((x - baseline['mean']) ** 2 for x in values) / (n - 1)
                     baseline['std'] = variance ** 0.5
                 else:
                     baseline['std'] = 0.0
-                    
-            except Exception as e:
-                print(f"⚠️  Baseline calculation warning for {metric_name}: {e}")
+            except Exception:
                 baseline['std'] = 0.0
         
         return anomalies
@@ -161,10 +156,8 @@ class AlertAnalyzer:
         if len(alerts) < 2:
             return {'correlated': False}
         
-        # Group by time window
         alert_names = [a['labels'].get('alertname') for a in alerts]
         
-        # Check for known patterns
         patterns = {
             'cascade': ['HighErrorRate', 'HighLatency'],
             'outage': ['MetricsAppDown', 'LowRequestRate'],
@@ -183,12 +176,11 @@ class AlertAnalyzer:
     
     def analyze_alert_with_ai(self, alert: Dict, anomalies: List[Dict] = None, 
                             correlation: Dict = None) -> tuple[str, float]:
-        """Enhanced AI analysis with anomaly and correlation context"""
+        """Enhanced AI analysis"""
         alert_name = alert['labels'].get('alertname', 'Unknown')
         severity = alert['labels'].get('severity', 'unknown')
         description = alert['annotations'].get('description', 'No description')
         
-        # Build enhanced context
         context_parts = [
             f"Alert: {alert_name}",
             f"Severity: {severity}",
@@ -205,31 +197,29 @@ class AlertAnalyzer:
                 )
         
         if correlation and correlation.get('correlated'):
-            context_parts.append(f"\n**Pattern Detected:** {correlation['description']}")
-            context_parts.append(f"Related alerts: {', '.join(correlation['alerts'])}")
+            context_parts.append(f"\n**Pattern:** {correlation['description']}")
         
         context = "\n".join(context_parts)
         
-        prompt = f"""You are an expert DevOps/SRE engineer with AI-powered anomaly detection.
+        prompt = f"""You are an expert DevOps/SRE engineer.
 
 {context}
 
-**Analysis Required:**
-
-1. **Root Cause** (2-3 sentences considering anomalies/patterns)
-2. **Impact Assessment** (1-2 sentences)
-3. **Immediate Actions** (3 specific steps with kubectl commands)
+Provide:
+1. **Root Cause** (2-3 sentences)
+2. **Impact** (1-2 sentences)
+3. **Actions** (3 specific steps with kubectl commands)
 4. **Prevention** (1-2 sentences)
 
-Keep it actionable and concise."""
+Be concise and actionable."""
 
         try:
-            print(f"🤖 Analyzing '{alert_name}' with AI...")
+            print(f"🤖 Analyzing '{alert_name}'...")
             
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are an expert DevOps/SRE engineer."},
+                    {"role": "system", "content": "You are an expert DevOps/SRE."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=1000,
@@ -237,36 +227,30 @@ Keep it actionable and concise."""
             )
             
             analysis = response.choices[0].message.content
-            
-            # Calculate cost
             input_tokens = response.usage.prompt_tokens
             output_tokens = response.usage.completion_tokens
             cost = (input_tokens * 0.00000015) + (output_tokens * 0.0000006)
             self.total_cost += cost
             
-            print(f"✅ Analysis complete! Cost: ${cost:.6f}")
+            print(f"✅ Complete! Cost: ${cost:.6f}")
             return analysis, cost
             
         except Exception as e:
-            return f"❌ AI analysis failed: {e}", 0.0
+            return f"❌ AI failed: {e}", 0.0
     
     def send_to_slack(self, alert: Dict, analysis: str, 
                      anomalies: List[Dict] = None, correlation: Dict = None):
-        """Send formatted alert to Slack"""
+        """Send to Slack"""
         if not self.slack_webhook:
             return
         
         alert_name = alert['labels'].get('alertname')
         severity = alert['labels'].get('severity', 'unknown')
         
-        # Build Slack message
         blocks = [
             {
                 "type": "header",
-                "text": {
-                    "type": "plain_text",
-                    "text": f"🚨 Alert: {alert_name}"
-                }
+                "text": {"type": "plain_text", "text": f"🚨 {alert_name}"}
             },
             {
                 "type": "section",
@@ -278,18 +262,16 @@ Keep it actionable and concise."""
             {"type": "divider"}
         ]
         
-        # Add anomaly info
         if anomalies:
             anomaly_text = "\n".join([
-                f"• *{a['metric']}*: {a['current']:.2f} (baseline: {a['baseline']:.2f}, z-score: {a['z_score']:.1f})"
+                f"• *{a['metric']}*: {a['current']:.2f} (z-score: {a['z_score']:.1f})"
                 for a in anomalies
             ])
             blocks.append({
                 "type": "section",
-                "text": {"type": "mrkdwn", "text": f"*🔍 Anomalies Detected:*\n{anomaly_text}"}
+                "text": {"type": "mrkdwn", "text": f"*🔍 Anomalies:*\n{anomaly_text}"}
             })
         
-        # Add correlation info
         if correlation and correlation.get('correlated'):
             blocks.append({
                 "type": "section",
@@ -297,116 +279,101 @@ Keep it actionable and concise."""
             })
         
         blocks.append({"type": "divider"})
-        
-        # Add AI analysis (truncate to Slack limit)
-        analysis_truncated = analysis[:2800] if len(analysis) > 2800 else analysis
         blocks.append({
             "type": "section",
-            "text": {"type": "mrkdwn", "text": f"*🤖 AI Analysis:*\n{analysis_truncated}"}
+            "text": {"type": "mrkdwn", "text": f"*🤖 AI:*\n{analysis[:2800]}"}
         })
         
         try:
-            response = requests.post(
-                self.slack_webhook,
-                json={"blocks": blocks},
-                timeout=5
-            )
-            
+            response = requests.post(self.slack_webhook, json={"blocks": blocks}, timeout=5)
             if response.status_code == 200:
                 print(f"💬 Sent to Slack!")
             else:
                 print(f"❌ Slack error: {response.status_code}")
-                
         except Exception as e:
-            print(f"❌ Slack send failed: {e}")
+            print(f"❌ Slack failed: {e}")
     
     def format_alert_report(self, alert: Dict, analysis: str, cost: float, 
                           anomalies: List[Dict] = None, correlation: Dict = None) -> str:
-        """Enhanced report with anomalies and correlation"""
+        """Format report"""
         alert_name = alert['labels'].get('alertname', 'Unknown')
         severity = alert['labels'].get('severity', 'unknown')
         
         report = f"""
 {'='*80}
-🚨 ALERT ANALYSIS REPORT
+🚨 ALERT ANALYSIS
 {'='*80}
 
 Alert: {alert_name}
 Severity: {severity}
 Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-Analysis Cost: ${cost:.6f}
+Cost: ${cost:.6f}
 """
         
         if anomalies:
-            report += f"\n{'-'*80}\n🔍 ANOMALIES DETECTED\n{'-'*80}\n\n"
-            for anomaly in anomalies:
-                report += f"{anomaly['metric'].upper()}:\n"
-                report += f"  Current: {anomaly['current']:.4f}\n"
-                report += f"  Baseline: {anomaly['baseline']:.4f} (±{anomaly['std']:.4f})\n"
-                report += f"  Z-Score: {anomaly['z_score']:.2f} ({anomaly['severity']})\n\n"
+            report += f"\n{'-'*80}\n🔍 ANOMALIES\n{'-'*80}\n\n"
+            for a in anomalies:
+                report += f"{a['metric']}: {a['current']:.4f} (baseline: {a['baseline']:.4f}, z: {a['z_score']:.2f})\n"
         
         if correlation and correlation.get('correlated'):
-            report += f"\n{'-'*80}\n🔗 CORRELATION DETECTED\n{'-'*80}\n\n"
-            report += f"Pattern: {correlation['pattern']}\n"
-            report += f"Description: {correlation['description']}\n"
-            report += f"Related Alerts: {', '.join(correlation['alerts'])}\n\n"
+            report += f"\n{'-'*80}\n🔗 CORRELATION\n{'-'*80}\n"
+            report += f"{correlation['description']}\n"
         
         report += f"\n{'-'*80}\n🤖 AI ANALYSIS\n{'-'*80}\n\n{analysis}\n\n{'='*80}\n"
-        
         return report
     
     def monitor_and_analyze(self, interval: int = 30):
-        """Main monitoring loop with all features"""
+        """Main loop - FIXED: Better deduplication!"""
         print("🚀 Enhanced Alert Analyzer Started!")
         print(f"{'='*80}\n")
         
         iteration = 0
+        alert_states = {}  # Track: {alert_name: 'firing' | 'resolved'}
         
         while True:
             try:
                 iteration += 1
                 timestamp = datetime.now().strftime('%H:%M:%S')
                 
-                # Check for anomalies
+                # Check anomalies
                 anomalies = self.detect_anomalies()
                 if anomalies:
-                    print(f"🔍 [{timestamp}] Detected {len(anomalies)} anomalies")
+                    print(f"🔍 [{timestamp}] {len(anomalies)} anomalies")
                 
-                # Get current alerts
+                # Get alerts
                 alerts = self.get_active_alerts()
+                current_alert_names = {a['labels'].get('alertname') for a in alerts}
                 
                 if not alerts:
-                    print(f"✅ [{timestamp}] Iteration {iteration}: No firing alerts")
+                    print(f"✅ [{timestamp}] Iteration {iteration}: No alerts")
+                    alert_states.clear()  # Clear when no alerts
                 else:
                     print(f"🔥 [{timestamp}] Iteration {iteration}: {len(alerts)} alert(s)")
                     
-                    # Check correlation
                     correlation = self.correlate_alerts(alerts)
                     if correlation.get('correlated'):
-                        print(f"🔗 Correlation: {correlation['description']}")
+                        print(f"🔗 {correlation['description']}")
                     
-                    # Analyze each new alert
                     for alert in alerts:
-                        alert_id = f"{alert['labels'].get('alertname')}_{alert.get('activeAt')}"
+                        alert_name = alert['labels'].get('alertname')
                         
-                        if alert_id in self.analyzed_alerts:
+                        # DEDUPLICATION: Only analyze if NEW or was resolved before
+                        if alert_name in alert_states and alert_states[alert_name] == 'firing':
+                            # Already analyzed and still firing - SKIP!
                             continue
                         
-                        print(f"\n🆕 NEW: {alert['labels'].get('alertname')}")
+                        # NEW or RE-FIRING - analyze it!
+                        print(f"\n🆕 NEW: {alert_name}")
+                        alert_states[alert_name] = 'firing'
                         
-                        # AI analysis with context
                         analysis, cost = self.analyze_alert_with_ai(alert, anomalies, correlation)
-                        
-                        # Generate report
                         report = self.format_alert_report(alert, analysis, cost, anomalies, correlation)
                         print(report)
                         
-                        # Send to Slack
                         self.send_to_slack(alert, analysis, anomalies, correlation)
                         
-                        # Save report
-                        safe_id = alert_id.replace(':', '_').replace('/', '_')
-                        filename = f"alert_analysis_{safe_id}.txt"
+                        # Save
+                        filename = f"alert_{alert_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                         try:
                             with open(filename, 'w') as f:
                                 f.write(report)
@@ -414,21 +381,26 @@ Analysis Cost: ${cost:.6f}
                         except Exception as e:
                             print(f"❌ Save failed: {e}\n")
                         
-                        self.analyzed_alerts.add(alert_id)
+                        self.analyzed_alerts.add(alert_name)
                         self.alert_history.append({
                             'alert': alert,
                             'timestamp': datetime.now(),
                             'analysis': analysis
                         })
+                    
+                    # Mark resolved alerts
+                    for prev_alert in list(alert_states.keys()):
+                        if prev_alert not in current_alert_names:
+                            print(f"✅ Resolved: {prev_alert}")
+                            del alert_states[prev_alert]
                 
                 time.sleep(interval)
                 
             except KeyboardInterrupt:
                 print(f"\n\n{'='*80}")
                 print("👋 Shutting down...")
-                print(f"💰 Total cost: ${self.total_cost:.6f}")
-                print(f"📊 Alerts analyzed: {len(self.analyzed_alerts)}")
-                print(f"🔍 Baseline metrics tracked: {len(self.metric_baselines)}")
+                print(f"💰 Total: ${self.total_cost:.6f}")
+                print(f"📊 Analyzed: {len(self.analyzed_alerts)}")
                 print(f"{'='*80}\n")
                 break
             except Exception as e:
@@ -437,16 +409,12 @@ Analysis Cost: ${cost:.6f}
 
 
 def main():
-    """Main entry point"""
     openai_key = os.getenv('OPENAI_API_KEY')
     if not openai_key:
         print("❌ OPENAI_API_KEY not set!")
         return
     
     slack_webhook = os.getenv('SLACK_WEBHOOK_URL')
-    if not slack_webhook:
-        print("⚠️  SLACK_WEBHOOK_URL not set - Slack disabled")
-    
     prometheus_url = os.getenv('PROMETHEUS_URL', 'http://prometheus:9090')
     
     analyzer = AlertAnalyzer(
