@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-analyzer
+  labels:
+    app: alert-analyzer
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alert-analyzer
+  template:
+    metadata:
+      labels:
+        app: alert-analyzer
+        version: v2
+    spec:
+      containers:
+      - name: analyzer
+        image: dineshravii/alert-analyzer:v2  # New version!
+        imagePullPolicy: Always
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: alert-analyzer-secrets  # Updated secret name
+              key: OPENAI_API_KEY
+        - name: SLACK_WEBHOOK_URL           # New!
+          valueFrom:
+            secretKeyRef:
+              name: alert-analyzer-secrets
+              key: SLACK_WEBHOOK_URL
+        - name: PROMETHEUS_URL
+          value: "http://prometheus:9090"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
