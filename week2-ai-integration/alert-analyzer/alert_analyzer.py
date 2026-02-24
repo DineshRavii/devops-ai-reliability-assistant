@@ -36,7 +36,7 @@ class AlertAnalyzer:
         self.total_cost = 0.0
         
         print(f"🤖 AI Model: {model}")
-        if slack_webhook:
+        if slack_webhook_url:
             print(f"💬 Slack: Enabled")
         else:
             print(f"💬 Slack: Disabled (no webhook)")
