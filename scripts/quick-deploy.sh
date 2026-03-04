@@ -15,7 +15,7 @@ case $WEEK in
     1)
         echo "Deploying Week 1 - K8s Basics..."
         kubectl apply -f week1-k8s-basics/01-pods/
-        kubectl apply -f week1-k8s-basics/02-deployments/app-deployment.yaml
+        kubectl apply -f week1-k8s-basics/03-app/app-deployment.yaml
         kubectl apply -f week1-k8s-basics/04-prometheus/prometheus-config.yaml
         kubectl apply -f week1-k8s-basics/04-prometheus/prometheus-deployment.yaml
         kubectl apply -f week1-k8s-basics/04-prometheus/prometheus-rules.yaml
