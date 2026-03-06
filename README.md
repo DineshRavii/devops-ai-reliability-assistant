@@ -1,6 +1,6 @@
 # AI-Powered Incident & Reliability Assistant
 
-**By Dinesh Ravi** | DevOps Engineer | Journey to 50 LPA 🎯
+**By Dinesh Ravi** | DevOps Engineer | Journey to Devops Architect 🎯
 
 [![Docker Hub](https://img.shields.io/badge/Docker-dineshravii-blue?logo=docker)](https://hub.docker.com/u/dineshravii)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-green?logo=kubernetes)](https://kubernetes.io/)
