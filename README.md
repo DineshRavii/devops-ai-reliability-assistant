@@ -17,7 +17,7 @@ Building a **production-grade AI-powered monitoring and incident response system
 - **Infrastructure as Code:** Terraform, Kubernetes YAML
 - **Automation:** CI/CD, auto-remediation, intelligent incident response
 
-**Goal:** Master DevOps/SRE skills deeply, build impressive portfolio, land Lead DevOps / DevOps Architect role at 50 LPA.
+**Goal:** Master DevOps/SRE skills deeply, build impressive portfolio, land Lead DevOps / DevOps Architect role.
 
 **Timeline:** 12-week deep mastery plan (currently in Week 2)
 
